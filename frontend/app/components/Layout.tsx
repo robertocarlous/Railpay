@@ -19,8 +19,8 @@ export default function Layout({ children, variant = "admin" }: LayoutProps) {
   const { isConnected, address } = useAccount();
   const chainId = useChainId();
 
-  // Flare Testnet Chain ID is 114
-  const FLARE_TESTNET_CHAIN_ID = 114;
+  // Flare Mainnet Chain ID is 14
+  const FLARE_MAINNET_CHAIN_ID = 14;
 
   useEffect(() => {
     // Check if wallet is connected and on correct network
@@ -35,8 +35,8 @@ export default function Layout({ children, variant = "admin" }: LayoutProps) {
         return;
       }
 
-      if (chainId !== FLARE_TESTNET_CHAIN_ID) {
-        toast.error("Please switch to Flare Testnet network");
+      if (chainId !== FLARE_MAINNET_CHAIN_ID) {
+        toast.error("Please switch to Flare Mainnet network");
       }
     }
   }, [isConnected, chainId, pathname, router]);
@@ -155,7 +155,7 @@ export default function Layout({ children, variant = "admin" }: LayoutProps) {
       </header>
 
       {/* Network Warning */}
-      {isConnected && chainId !== FLARE_TESTNET_CHAIN_ID && (
+      {isConnected && chainId !== FLARE_MAINNET_CHAIN_ID && (
         <div className="bg-amber-50 border-b border-amber-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
             <div className="flex items-center gap-2 text-amber-800">
@@ -171,7 +171,7 @@ export default function Layout({ children, variant = "admin" }: LayoutProps) {
                 />
               </svg>
               <span className="text-sm font-medium">
-                Please switch to Flare Testnet to use this application
+                Please switch to Flare Mainnet to use this application
               </span>
             </div>
           </div>
