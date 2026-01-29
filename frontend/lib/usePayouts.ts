@@ -7,7 +7,7 @@ import { useAccount } from "wagmi";
 import { useState, useEffect } from "react";
 import { batchPayoutContract, batchPayoutABI } from "./contracts";
 import { getPayoutConfig, getPayoutRecipientsConfig, formatUSDT0 } from "./contractInteractions";
-import { formatUnits } from "viem";
+import { formatUnits, decodeEventLog } from "viem";
 
 export interface PayoutData {
   payoutId: bigint;
@@ -75,12 +75,25 @@ export function useAllPayouts() {
         const events = await publicClient.getLogs({
           address: batchPayoutContract.address,
           event: payoutCreatedEvent as any,
-          fromBlock: 0n,
+          fromBlock: BigInt(0),
         });
 
         // Fetch payout details for each event
         const payoutPromises = events.map(async (event) => {
-          const payoutId = event.args.payoutId as bigint;
+          // Decode the event log to get the args
+          let decodedEvent;
+          try {
+            decodedEvent = decodeEventLog({
+              abi: batchPayoutABI,
+              data: event.data,
+              topics: event.topics,
+            });
+          } catch (error) {
+            console.error("Failed to decode event:", error);
+            return null;
+          }
+
+          const payoutId = (decodedEvent.args as any)?.payoutId as bigint;
           if (!payoutId) return null;
 
           try {
