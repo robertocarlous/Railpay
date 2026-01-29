@@ -1,8 +1,8 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
-// USDT0 contract address on Flare Testnet (Coston2)
-// This should be updated with the actual USDT0 address when available
-const USDT0_ADDRESS = "0x0000000000000000000000000000000000000000"; // TODO: Update with actual USDT0 address
+// USDT0 contract address on Flare Mainnet
+// Official USDT0 address: 0xe7cd86e13AC4309349F30B3435a9d337750fC82D
+const USDT0_ADDRESS = "0xe7cd86e13AC4309349F30B3435a9d337750fC82D";
 
 const BatchPayoutModule = buildModule("BatchPayoutModule", (m) => {
   const usdt0Address = m.getParameter("usdt0Address", USDT0_ADDRESS);
