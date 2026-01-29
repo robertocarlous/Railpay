@@ -11,7 +11,7 @@ interface WalletGuardProps {
   children: React.ReactNode;
 }
 
-const FLARE_TESTNET_CHAIN_ID = 114;
+const FLARE_MAINNET_CHAIN_ID = 14;
 
 export default function WalletGuard({ children }: WalletGuardProps) {
   const router = useRouter();
@@ -36,8 +36,8 @@ export default function WalletGuard({ children }: WalletGuardProps) {
     }
 
     // Check network
-    if (isConnected && chainId !== FLARE_TESTNET_CHAIN_ID) {
-      toast.error("Please switch to Flare Testnet network");
+    if (isConnected && chainId !== FLARE_MAINNET_CHAIN_ID) {
+      toast.error("Please switch to Flare Mainnet network");
     }
   }, [isConnected, isConnecting, chainId, pathname, router]);
 
@@ -78,7 +78,7 @@ export default function WalletGuard({ children }: WalletGuardProps) {
           </h2>
           <p className="text-gray-600 mb-6">
             Please connect your wallet to access this page. Make sure you're
-            connected to Flare Testnet.
+            connected to Flare Mainnet.
           </p>
           <button
             onClick={() => router.push("/")}
@@ -92,7 +92,7 @@ export default function WalletGuard({ children }: WalletGuardProps) {
   }
 
   // Block access if wrong network
-  if (isConnected && chainId !== FLARE_TESTNET_CHAIN_ID) {
+  if (isConnected && chainId !== FLARE_MAINNET_CHAIN_ID) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Card className="text-center p-8 max-w-md">
@@ -115,7 +115,7 @@ export default function WalletGuard({ children }: WalletGuardProps) {
             Wrong Network
           </h2>
           <p className="text-gray-600 mb-6">
-            Please switch to Flare Testnet to use this application.
+            Please switch to Flare Mainnet to use this application.
           </p>
         </Card>
       </div>
