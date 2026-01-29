@@ -44,7 +44,7 @@ export default function NewPayout() {
     return sum + amount;
   }, 0);
 
-  const totalAmountWei = totalAmount > 0 ? parseUSDT0(totalAmount.toFixed(6)) : 0n;
+  const totalAmountWei = totalAmount > 0 ? parseUSDT0(totalAmount.toFixed(6)) : BigInt(0);
 
   // Check USDT0 balance
   const { data: balance, isLoading: balanceLoading } = useReadContract({
@@ -260,8 +260,8 @@ export default function NewPayout() {
   };
 
   // Check if approval is needed
-  const needsApproval = allowance && totalAmountWei > 0n && allowance < totalAmountWei;
-  const hasEnoughBalance = balance && totalAmountWei > 0n && balance >= totalAmountWei;
+  const needsApproval = allowance && totalAmountWei > BigInt(0) && allowance < totalAmountWei;
+  const hasEnoughBalance = balance && totalAmountWei > BigInt(0) && balance >= totalAmountWei;
 
   return (
     <WalletGuard>
