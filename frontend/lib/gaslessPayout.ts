@@ -38,7 +38,7 @@ interface BatchPayoutRequest {
 export function getUSDT0Address(): string {
   return (
     process.env.NEXT_PUBLIC_USDT0_ADDRESS ||
-    "0xe7cd86e13AC4309349F30B3435a9d337750fC82D" // Flare Mainnet - update for testnet
+    "0xe7cd86e13AC4309349F30B3435a9d337750fC82D" // Flare Mainnet USDT0 address
   );
 }
 
