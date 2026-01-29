@@ -35,5 +35,12 @@ export default defineConfig({
       accounts: configVariable("FLARE_TESTNET_PRIVATE_KEY") ? [configVariable("FLARE_TESTNET_PRIVATE_KEY")] : [],
       chainId: 114,
     },
+    flareMainnet: {
+      type: "http",
+      chainType: "l1",
+      url: configVariable("FLARE_MAINNET_RPC_URL") || "https://flare-api.flare.network/ext/C/rpc",
+      accounts: configVariable("FLARE_MAINNET_PRIVATE_KEY") ? [configVariable("FLARE_MAINNET_PRIVATE_KEY")] : [],
+      chainId: 14,
+    },
   },
 });
