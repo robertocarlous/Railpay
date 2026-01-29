@@ -12,16 +12,16 @@ async function main() {
     console.error("❌ ERROR: USDT0_ADDRESS not set!");
     console.log("\nPlease set USDT0_ADDRESS in your .env file:");
     console.log("USDT0_ADDRESS=0x...");
-    console.log("\nTo find USDT0 address on Flare Testnet:");
-    console.log("1. Check Flare documentation");
-    console.log("2. Check explorer: https://coston2-explorer.flare.network");
-    console.log("3. Or contact Flare team");
+    console.log("\nUSDT0 address on Flare Mainnet:");
+    console.log("0xe7cd86e13AC4309349F30B3435a9d337750fC82D");
+    console.log("\nSet it in your .env file:");
+    console.log("USDT0_ADDRESS=0xe7cd86e13AC4309349F30B3435a9d337750fC82D");
     process.exit(1);
   }
 
-  console.log("🚀 Deploying BatchPayout contract to Flare Testnet...");
+  console.log("🚀 Deploying BatchPayout contract to Flare Mainnet...");
   console.log("📍 USDT0 Address:", USDT0_ADDRESS);
-  console.log("🌐 Network: Flare Testnet (Coston2)");
+  console.log("🌐 Network: Flare Mainnet");
   console.log("");
 
   try {
@@ -43,12 +43,12 @@ async function main() {
     console.log("\n2. Copy ABI to frontend:");
     console.log("   cp artifacts/contracts/BatchPayout.sol/BatchPayout.json ../frontend/lib/contracts/");
     console.log("\n3. Verify contract on explorer:");
-    console.log(`   https://coston2-explorer.flare.network/address/${contractAddress}`);
+    console.log(`   https://flare-explorer.flare.network/address/${contractAddress}`);
     console.log("\n4. Test the contract with a small batch payout");
   } catch (error: any) {
     console.error("❌ Deployment failed:", error.message);
     if (error.message.includes("insufficient funds")) {
-      console.log("\n💡 Tip: Fund your wallet with testnet FLR tokens");
+      console.log("\n💡 Tip: Fund your wallet with FLR tokens for gas fees");
     }
     process.exit(1);
   }
