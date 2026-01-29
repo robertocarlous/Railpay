@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:testnet": "hardhat ignition deploy ignition/modules/BatchPayout.ts --network flareTestnet",
+    "deploy:local": "hardhat ignition deploy ignition/modules/BatchPayout.ts"
   },
   "keywords": [],
   "author": "",
@@ -13,7 +16,9 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.0.7",
     "@nomicfoundation/hardhat-toolbox-viem": "^5.0.2",
+    "@types/chai": "^4.3.0",
     "@types/node": "^22.19.7",
+    "chai": "^4.3.0",
     "forge-std": "github:foundry-rs/forge-std#v1.9.4",
     "hardhat": "^3.1.5",
     "typescript": "~5.8.0",
