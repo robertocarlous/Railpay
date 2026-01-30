@@ -16,10 +16,11 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.0.7",
     "@nomicfoundation/hardhat-toolbox-viem": "^5.0.2",
+    "@nomicfoundation/hardhat-verify": "^3.0.8",
     "@types/chai": "^4.3.0",
     "@types/node": "^22.19.7",
     "chai": "^4.3.0",
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.6.1",
     "forge-std": "github:foundry-rs/forge-std#v1.9.4",
     "hardhat": "^3.1.5",
     "tsx": "^4.19.1",

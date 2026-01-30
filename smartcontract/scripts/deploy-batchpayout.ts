@@ -29,6 +29,8 @@ async function main() {
           usdt0Address: USDT0_ADDRESS,
         },
       },
+      configPath: "./ignition",
+      network: "flareMainnet",
     });
 
     const contractAddress = await batchPayout.getAddress();

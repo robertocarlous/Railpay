@@ -47,6 +47,7 @@ export default defineConfig({
       chainId: 14,
     },
   },
+<<<<<<< HEAD
   chainDescriptors: {
     114: {
       name: "Flare Coston2",
@@ -61,5 +62,21 @@ export default defineConfig({
   verify: {
     blockscout: { enabled: true },
     etherscan: { apiKey: "no-api-key-needed", enabled: true },
+=======
+  etherscan: {
+    apiKey: {
+      flareMainnet: process.env.FLARE_EXPLORER_API_KEY || "",
+    },
+    customChains: [
+      {
+        network: "flareMainnet",
+        chainId: 14,
+        urls: {
+          apiURL: "https://flare-explorer.flare.network/api",
+          browserURL: "https://flare-explorer.flare.network",
+        },
+      },
+    ],
+>>>>>>> 8fe4896acc340a801fc53aac4d9b63b04d694a00
   },
 });
