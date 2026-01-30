@@ -110,6 +110,24 @@ contract GaslessBatchPayout {
         owner = msg.sender;
         payoutCounter = 1;
     }
+
+    /** @dev Validates and marks nonces used; returns total amount and nonces array. */
+    function _validateAndMarkNonces(
+        address initiator,
+        address[] calldata recipients,
+        uint256[] calldata amounts,
+        bytes32[] calldata nonces
+    ) internal returns (uint256 totalAmount, bytes32[] memory authorizationNonces) {
+        authorizationNonces = new bytes32[](nonces.length);
+        for (uint256 i = 0; i < recipients.length; i++) {
+            require(recipients[i] != address(0), "GaslessBatchPayout: invalid recipient address");
+            require(amounts[i] > 0, "GaslessBatchPayout: amount must be greater than 0");
+            require(!usedNonces[initiator][nonces[i]], "GaslessBatchPayout: nonce already used");
+            totalAmount += amounts[i];
+            usedNonces[initiator][nonces[i]] = true;
+            authorizationNonces[i] = nonces[i];
+        }
+    }
     
     /**
      * @dev Record a batch payout after gasless transfers have been executed
@@ -133,19 +151,7 @@ contract GaslessBatchPayout {
         require(recipients.length == nonces.length, "GaslessBatchPayout: nonces length mismatch");
         
         uint256 payoutId = payoutCounter++;
-        uint256 totalAmount = 0;
-        bytes32[] memory authorizationNonces = new bytes32[](nonces.length);
-        
-        // Calculate total and validate nonces
-        for (uint256 i = 0; i < recipients.length; i++) {
-            require(recipients[i] != address(0), "GaslessBatchPayout: invalid recipient address");
-            require(amounts[i] > 0, "GaslessBatchPayout: amount must be greater than 0");
-            require(!usedNonces[initiator][nonces[i]], "GaslessBatchPayout: nonce already used");
-            
-            totalAmount += amounts[i];
-            usedNonces[initiator][nonces[i]] = true;
-            authorizationNonces[i] = nonces[i];
-        }
+        (uint256 totalAmount, bytes32[] memory authorizationNonces) = _validateAndMarkNonces(initiator, recipients, amounts, nonces);
         
         // Create payout record
         payouts[payoutId] = Payout({
