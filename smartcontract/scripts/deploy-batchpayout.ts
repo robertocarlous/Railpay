@@ -6,7 +6,7 @@ dotenv.config();
 
 async function main() {
   // Get USDT0 address from environment, or default to testnet (Coston2)
-  const USDT0_ADDRESS = process.env.USDT0_ADDRESS || process.env.NEXT_PUBLIC_USDT0_ADDRESS || "0x87B677383400973be3163D87abe922178EA04869";
+  const USDT0_ADDRESS = process.env.USDT0_ADDRESS || process.env.NEXT_PUBLIC_USDT0_ADDRESS || "0xC1A5B41512496B80903D1f32d6dEa3a73212E71F";
 
   if (!USDT0_ADDRESS || USDT0_ADDRESS === "0x0000000000000000000000000000000000000000") {
     console.error("❌ ERROR: USDT0_ADDRESS not set!");
