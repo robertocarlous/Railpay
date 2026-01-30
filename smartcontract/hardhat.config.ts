@@ -1,4 +1,5 @@
 import hardhatToolboxViemPlugin from "@nomicfoundation/hardhat-toolbox-viem";
+import "@nomicfoundation/hardhat-verify";
 import { configVariable, defineConfig } from "hardhat/config";
 
 export default defineConfig({
@@ -42,5 +43,20 @@ export default defineConfig({
       accounts: configVariable("FLARE_MAINNET_PRIVATE_KEY") ? [configVariable("FLARE_MAINNET_PRIVATE_KEY")] : [],
       chainId: 14,
     },
+  },
+  etherscan: {
+    apiKey: {
+      flareMainnet: process.env.FLARE_EXPLORER_API_KEY || "",
+    },
+    customChains: [
+      {
+        network: "flareMainnet",
+        chainId: 14,
+        urls: {
+          apiURL: "https://flare-explorer.flare.network/api",
+          browserURL: "https://flare-explorer.flare.network",
+        },
+      },
+    ],
   },
 });

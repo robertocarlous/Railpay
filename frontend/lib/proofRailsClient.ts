@@ -4,9 +4,7 @@
  * API: https://middleware-iso20022-v13-production-5084.up.railway.app
  */
 
-const PROOFRAILS_API_URL =
-  process.env.NEXT_PUBLIC_PROOFRAILS_API_URL ||
-  "https://middleware-iso20022-v13-production-5084.up.railway.app";
+// Use getter function for API URL
 
 export interface ProofRailsRecordTipRequest {
   tip_tx_hash: string;
@@ -18,6 +16,14 @@ export interface ProofRailsRecordTipRequest {
   reference: string;
   callback_url?: string;
 }
+
+// Get ProofRails API URL from environment
+export const getProofRailsAPIUrl = (): string => {
+  return (
+    process.env.NEXT_PUBLIC_PROOFRAILS_API_URL ||
+    "https://middleware-iso20022-v13-production-5084.up.railway.app"
+  );
+};
 
 export interface ProofRailsRecordTipResponse {
   receipt_id: string;
@@ -58,7 +64,7 @@ export async function recordProofRailsTip(
     headers["x-api-key"] = apiKey;
   }
 
-  const response = await fetch(`${PROOFRAILS_API_URL}/v1/iso/record-tip`, {
+  const response = await fetch(`${getProofRailsAPIUrl()}/v1/iso/record-tip`, {
     method: "POST",
     headers,
     body: JSON.stringify(request),
@@ -86,7 +92,7 @@ export async function getProofRailsReceipt(
   }
 
   const response = await fetch(
-    `${PROOFRAILS_API_URL}/v1/iso/receipts/${receiptId}`,
+    `${getProofRailsAPIUrl()}/v1/iso/receipts/${receiptId}`,
     {
       method: "GET",
       headers,
@@ -116,7 +122,7 @@ export async function verifyProofRailsBundle(
     headers["x-api-key"] = apiKey;
   }
 
-  const response = await fetch(`${PROOFRAILS_API_URL}/v1/iso/verify`, {
+  const response = await fetch(`${getProofRailsAPIUrl()}/v1/iso/verify`, {
     method: "POST",
     headers,
     body: JSON.stringify({ bundle_url: bundleUrl }),
@@ -150,7 +156,7 @@ export async function recordBatchPayoutToProofRails(
       const receipt = await recordProofRailsTip(
         {
           tip_tx_hash: txHash,
-          chain: "coston2",
+          chain: "flare", // Use "flare" for mainnet, "coston2" for testnet
           amount: amounts[i],
           currency: currency,
           sender_wallet: initiator,
