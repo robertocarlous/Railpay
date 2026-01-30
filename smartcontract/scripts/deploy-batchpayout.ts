@@ -5,23 +5,21 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 async function main() {
-  // Get USDT0 address from environment or use placeholder
-  const USDT0_ADDRESS = process.env.USDT0_ADDRESS || process.env.NEXT_PUBLIC_USDT0_ADDRESS;
-  
+  // Get USDT0 address from environment, or default to testnet (Coston2)
+  const USDT0_ADDRESS = process.env.USDT0_ADDRESS || process.env.NEXT_PUBLIC_USDT0_ADDRESS || "0x87B677383400973be3163D87abe922178EA04869";
+
   if (!USDT0_ADDRESS || USDT0_ADDRESS === "0x0000000000000000000000000000000000000000") {
     console.error("❌ ERROR: USDT0_ADDRESS not set!");
     console.log("\nPlease set USDT0_ADDRESS in your .env file:");
     console.log("USDT0_ADDRESS=0x...");
-    console.log("\nUSDT0 address on Flare Mainnet:");
-    console.log("0xe7cd86e13AC4309349F30B3435a9d337750fC82D");
-    console.log("\nSet it in your .env file:");
-    console.log("USDT0_ADDRESS=0xe7cd86e13AC4309349F30B3435a9d337750fC82D");
+    console.log("\nUSDT0 Testnet (Coston2): 0x87B677383400973be3163D87abe922178EA04869");
+    console.log("USDT0 Mainnet: 0xe7cd86e13AC4309349F30B3435a9d337750fC82D");
     process.exit(1);
   }
 
-  console.log("🚀 Deploying BatchPayout contract to Flare Mainnet...");
+  console.log("🚀 Deploying BatchPayout contract...");
   console.log("📍 USDT0 Address:", USDT0_ADDRESS);
-  console.log("🌐 Network: Flare Mainnet");
+  console.log("🌐 Network: (use --network coston2 for testnet, flare for mainnet)");
   console.log("");
 
   try {

@@ -1,7 +1,7 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
 // USDT0 contract address on Flare Testnet (Coston2)
-const USDT0_ADDRESS = "0x0000000000000000000000000000000000000000"; // TODO: Update with actual USDT0 address
+const USDT0_ADDRESS = "0x87B677383400973be3163D87abe922178EA04869";
 
 // Relayer address - the address that will execute gasless transfers
 const RELAYER_ADDRESS = "0x0000000000000000000000000000000000000000"; // TODO: Update with relayer address

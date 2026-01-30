@@ -1,3 +1,4 @@
+import "dotenv/config";
 import hardhatToolboxViemPlugin from "@nomicfoundation/hardhat-toolbox-viem";
 import "@nomicfoundation/hardhat-verify";
 import { configVariable, defineConfig } from "hardhat/config";
@@ -32,8 +33,10 @@ export default defineConfig({
     flareTestnet: {
       type: "http",
       chainType: "l1",
-      url: configVariable("FLARE_TESTNET_RPC_URL") || "https://coston2-api.flare.network/ext/C/rpc",
-      accounts: configVariable("FLARE_TESTNET_PRIVATE_KEY") ? [configVariable("FLARE_TESTNET_PRIVATE_KEY")] : [],
+      url: process.env.FLARE_TESTNET_RPC_URL || "https://coston2-api.flare.network/ext/C/rpc",
+      accounts: (process.env.FLARE_TESTNET_PRIVATE_KEY || process.env.PRIVATE_KEY)
+        ? [process.env.FLARE_TESTNET_PRIVATE_KEY || process.env.PRIVATE_KEY]
+        : [],
       chainId: 114,
     },
     flareMainnet: {
@@ -44,6 +47,22 @@ export default defineConfig({
       chainId: 14,
     },
   },
+<<<<<<< HEAD
+  chainDescriptors: {
+    114: {
+      name: "Flare Coston2",
+      blockExplorers: {
+        blockscout: {
+          url: "https://coston2-explorer.flare.network",
+          apiUrl: "https://coston2-explorer.flare.network/api",
+        },
+      },
+    },
+  },
+  verify: {
+    blockscout: { enabled: true },
+    etherscan: { apiKey: "no-api-key-needed", enabled: true },
+=======
   etherscan: {
     apiKey: {
       flareMainnet: process.env.FLARE_EXPLORER_API_KEY || "",
@@ -58,5 +77,6 @@ export default defineConfig({
         },
       },
     ],
+>>>>>>> 8fe4896acc340a801fc53aac4d9b63b04d694a00
   },
 });
