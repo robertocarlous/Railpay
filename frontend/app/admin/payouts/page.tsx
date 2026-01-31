@@ -164,7 +164,7 @@ export default function PayoutHistory() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           {payout.txHash ? (
                             <a
-                              href={`https://flare-explorer.flare.network/tx/${payout.txHash}`}
+                              href={`https://coston2-explorer.flare.network/tx/${payout.txHash}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-blue-600 hover:text-blue-700 font-mono text-sm"

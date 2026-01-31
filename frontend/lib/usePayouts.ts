@@ -1,5 +1,6 @@
 /**
  * Custom hook to fetch payout data from the contract using event logs
+ * WITH PAGINATION SUPPORT for RPC limits
  */
 
 import { useReadContract, usePublicClient } from "wagmi";
@@ -44,7 +45,51 @@ export function usePayoutCount() {
 }
 
 /**
- * Hook to get all payouts by fetching event logs
+ * Fetch logs in chunks to work around RPC block limit
+ */
+async function fetchLogsInChunks(
+  publicClient: any,
+  event: any,
+  fromBlock: bigint,
+  toBlock: bigint,
+  chunkSize: bigint = 25n
+) {
+  const allLogs: any[] = [];
+  let currentBlock = fromBlock;
+
+  console.log(`Fetching logs from block ${fromBlock} to ${toBlock} in chunks of ${chunkSize}`);
+
+  while (currentBlock <= toBlock) {
+    const endBlock = currentBlock + chunkSize - 1n > toBlock 
+      ? toBlock 
+      : currentBlock + chunkSize - 1n;
+
+    try {
+      console.log(`  Fetching chunk: ${currentBlock} to ${endBlock}`);
+      
+      const logs = await publicClient.getLogs({
+        address: batchPayoutContract.address,
+        event: event,
+        fromBlock: currentBlock,
+        toBlock: endBlock,
+      });
+
+      allLogs.push(...logs);
+      console.log(`  Found ${logs.length} events in this chunk`);
+    } catch (error) {
+      console.error(`  Error fetching chunk ${currentBlock}-${endBlock}:`, error);
+      // Continue to next chunk even if one fails
+    }
+
+    currentBlock = endBlock + 1n;
+  }
+
+  console.log(`Total events found: ${allLogs.length}`);
+  return allLogs;
+}
+
+/**
+ * Hook to get all payouts by fetching event logs with pagination
  */
 export function useAllPayouts() {
   const publicClient = usePublicClient();
@@ -61,6 +106,18 @@ export function useAllPayouts() {
       }
 
       try {
+        // Get current block number
+        const currentBlock = await publicClient.getBlockNumber();
+        
+        // Fetch last ~1000 blocks with pagination (approximately 1.5 hours)
+        // Adjust TOTAL_BLOCKS_TO_FETCH based on how much history you need
+        const TOTAL_BLOCKS_TO_FETCH = 1000n;
+        const CHUNK_SIZE = 25n; // RPC limit is ~30, use 25 to be safe
+        
+        const fromBlock = currentBlock > TOTAL_BLOCKS_TO_FETCH 
+          ? currentBlock - TOTAL_BLOCKS_TO_FETCH 
+          : 0n;
+
         // Get all PayoutCreated events using the ABI from the contract
         const payoutCreatedEvent = batchPayoutABI.find(
           (item: any) => item.type === "event" && item.name === "PayoutCreated"
@@ -72,11 +129,14 @@ export function useAllPayouts() {
           return;
         }
 
-        const events = await publicClient.getLogs({
-          address: batchPayoutContract.address,
-          event: payoutCreatedEvent as any,
-          fromBlock: BigInt(0),
-        });
+        // Fetch events in chunks to work around RPC limits
+        const events = await fetchLogsInChunks(
+          publicClient,
+          payoutCreatedEvent,
+          fromBlock,
+          currentBlock,
+          CHUNK_SIZE
+        );
 
         // Fetch payout details for each event
         const payoutPromises = events.map(async (event) => {

@@ -88,8 +88,14 @@ export default function NewPayout() {
   useEffect(() => {
     if (approveSuccess) {
       toast.success("USDT0 approval successful!");
-      refetchAllowance();
-      setStep("execute");
+      console.log("Approval successful, refetching allowance...");
+      
+      // Wait a bit before refetching to ensure blockchain state is updated
+      setTimeout(async () => {
+        const newAllowance = await refetchAllowance();
+        console.log("New allowance after approval:", newAllowance?.data?.toString());
+        setStep("execute");
+      }, 1000);
     }
   }, [approveSuccess, refetchAllowance]);
 
@@ -176,14 +182,24 @@ export default function NewPayout() {
       return;
     }
 
-    // Approve slightly more than needed for gas estimation
-    const approveAmount = (totalAmount * 1.1).toFixed(6);
+    // Approve with 20% buffer to account for any rounding issues
+    // Or approve max uint256 for convenience (uncomment below)
+    const approveAmountDecimal = (totalAmount * 1.2).toFixed(6);
+    
+    // Alternative: Approve maximum amount (unlimited approval)
+    // const maxApproval = "115792089237316195423570985008687907853269984665640564039457.584007";
+    
+    console.log("Approving amount:", approveAmountDecimal, "USDT0");
+    console.log("Total amount needed:", totalAmount, "USDT0");
+    console.log("Total amount in wei:", totalAmountWei.toString());
+    console.log("Approval amount in wei:", parseUSDT0(approveAmountDecimal).toString());
     
     try {
-      approve(getApproveConfig(approveAmount));
+      approve(getApproveConfig(approveAmountDecimal));
       setStep("approve");
       toast.info("Approve transaction submitted...");
     } catch (error: any) {
+      console.error("Approval error:", error);
       toast.error(`Approval failed: ${error.message}`);
     }
   };
@@ -205,20 +221,31 @@ export default function NewPayout() {
       return;
     }
 
+    // Debug logging
+    console.log("=== Execute Payout Debug ===");
+    console.log("Current allowance:", allowance?.toString());
+    console.log("Total amount needed (wei):", totalAmountWei.toString());
+    console.log("Total amount (decimal):", totalAmount);
+    console.log("Has enough allowance:", allowance && allowance >= totalAmountWei);
+
     // Check if allowance is sufficient
-    if (allowance && allowance < totalAmountWei) {
-      toast.error("Insufficient allowance. Please approve first.");
+    if (!allowance || allowance < totalAmountWei) {
+      toast.error(`Insufficient allowance. Current: ${allowance ? formatUSDT0(allowance) : '0'}, Needed: ${formatUSDT0(totalAmountWei)}`);
       return;
     }
 
     const recipientAddresses = recipients.map((r) => r.address as `0x${string}`);
     const amounts = recipients.map((r) => r.amount);
 
+    console.log("Recipients:", recipientAddresses);
+    console.log("Amounts:", amounts);
+
     try {
       executePayout(getBatchPayoutConfig(recipientAddresses, amounts, payoutRef.trim()));
       setStep("execute");
       toast.info("Payout transaction submitted...");
     } catch (error: any) {
+      console.error("Execute payout error:", error);
       toast.error(`Payout failed: ${error.message}`);
     }
   };
@@ -260,8 +287,9 @@ export default function NewPayout() {
   };
 
   // Check if approval is needed
-  const needsApproval = allowance && totalAmountWei > BigInt(0) && allowance < totalAmountWei;
-  const hasEnoughBalance = balance && totalAmountWei > BigInt(0) && balance >= totalAmountWei;
+  // Only check if we have recipients (totalAmountWei > 0)
+  const needsApproval = totalAmountWei > BigInt(0) && (!allowance || allowance < totalAmountWei);
+  const hasEnoughBalance = balance && (totalAmountWei === BigInt(0) || balance >= totalAmountWei);
 
   return (
     <WalletGuard>
@@ -271,38 +299,62 @@ export default function NewPayout() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Create New Payout</h1>
             <p className="mt-2 text-gray-600">
-              Batch payout execution on Flare using USDT0
+              Batch payout execution on Flare Testnet (Coston2) using USDT0
             </p>
           </div>
 
           {/* Balance and Allowance Info */}
           {address && (
-            <Card>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600">Your USDT0 Balance</p>
-                  <p className="text-lg font-semibold text-gray-900 font-mono">
-                    {balanceLoading ? "Loading..." : balance ? formatUSDT0(balance) : "0"} USDT0
-                  </p>
+            <>
+              <Card>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600">Your USDT0 Balance</p>
+                    <p className="text-lg font-semibold text-gray-900 font-mono">
+                      {balanceLoading ? "Loading..." : balance ? formatUSDT0(balance) : "0"} USDT0
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Current Allowance</p>
+                    <p className="text-lg font-semibold text-gray-900 font-mono">
+                      {allowanceLoading ? "Loading..." : allowance ? formatUSDT0(allowance) : "0"} USDT0
+                    </p>
+                    <button
+                      onClick={() => refetchAllowance()}
+                      className="text-xs text-blue-600 hover:text-blue-700 mt-1"
+                    >
+                      🔄 Refresh
+                    </button>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Status</p>
+                    {needsApproval ? (
+                      <Badge variant="warning">Approval Needed</Badge>
+                    ) : hasEnoughBalance ? (
+                      <Badge variant="success">Ready</Badge>
+                    ) : (
+                      <Badge variant="error">Insufficient Balance</Badge>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Current Allowance</p>
-                  <p className="text-lg font-semibold text-gray-900 font-mono">
-                    {allowanceLoading ? "Loading..." : allowance ? formatUSDT0(allowance) : "0"} USDT0
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Status</p>
-                  {needsApproval ? (
-                    <Badge variant="warning">Approval Needed</Badge>
-                  ) : hasEnoughBalance ? (
-                    <Badge variant="success">Ready</Badge>
-                  ) : (
-                    <Badge variant="error">Insufficient Balance</Badge>
-                  )}
-                </div>
-              </div>
-            </Card>
+              </Card>
+
+              {/* Debug Info - Remove this in production */}
+              {recipients.length > 0 && (
+                <Card className="border-blue-200 bg-blue-50">
+                  <h3 className="text-sm font-semibold text-blue-900 mb-2">Debug Info</h3>
+                  <div className="text-xs text-blue-800 space-y-1 font-mono">
+                    <p>Total Amount (decimal): {totalAmount}</p>
+                    <p>Total Amount (wei): {totalAmountWei.toString()}</p>
+                    <p>Current Allowance (wei): {allowance?.toString() || '0'}</p>
+                    <p>Balance (wei): {balance?.toString() || '0'}</p>
+                    <p>Needs Approval: {needsApproval ? 'Yes' : 'No'}</p>
+                    <p>Has Enough Balance: {hasEnoughBalance ? 'Yes' : 'No'}</p>
+                    <p>Allowance &gt;= Total: {allowance && allowance >= totalAmountWei ? 'Yes' : 'No'}</p>
+                  </div>
+                </Card>
+              )}
+            </>
           )}
 
           {/* Input Method Selection */}
@@ -545,12 +597,12 @@ export default function NewPayout() {
                 {approveHash}
               </p>
               <a
-                href={`https://flare-explorer.flare.network/tx/${approveHash}`}
+                href={`https://coston2-explorer.flare.network/tx/${approveHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-blue-600 hover:underline mt-2 inline-block"
               >
-                View on Explorer →
+                View on Coston2 Explorer →
               </a>
             </Card>
           )}
@@ -562,12 +614,12 @@ export default function NewPayout() {
                 {payoutHash}
               </p>
               <a
-                href={`https://flare-explorer.flare.network/tx/${payoutHash}`}
+                href={`https://coston2-explorer.flare.network/tx/${payoutHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-green-600 hover:underline mt-2 inline-block"
               >
-                View on Explorer →
+                View on Coston2 Explorer →
               </a>
             </Card>
           )}

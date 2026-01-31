@@ -6,36 +6,36 @@ import { RainbowKitProvider, getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { defineChain } from "viem";
 import "@rainbow-me/rainbowkit/styles.css";
 
-// Flare Mainnet configuration
-const flareMainnetConfig = defineChain({
-  id: 14,
-  name: "Flare",
+// Flare Testnet (Coston2) configuration
+const flareTestnet = defineChain({
+  id: 114,
+  name: "Coston2",
   nativeCurrency: {
     decimals: 18,
-    name: "Flare",
-    symbol: "FLR",
+    name: "Coston2 Flare",
+    symbol: "C2FLR",
   },
   rpcUrls: {
     default: {
-      http: ["https://flare-api.flare.network/ext/C/rpc"],
+      http: ["https://coston2-api.flare.network/ext/C/rpc"],
     },
     public: {
-      http: ["https://flare-api.flare.network/ext/C/rpc"],
+      http: ["https://coston2-api.flare.network/ext/C/rpc"],
     },
   },
   blockExplorers: {
     default: {
-      name: "Flare Explorer",
-      url: "https://flare-explorer.flare.network",
+      name: "Coston2 Explorer",
+      url: "https://coston2-explorer.flare.network",
     },
   },
-  testnet: false,
+  testnet: true,
 });
 
 const config = getDefaultConfig({
   appName: "Railpay",
   projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "YOUR_PROJECT_ID",
-  chains: [flareMainnetConfig],
+  chains: [flareTestnet],
   ssr: true,
 });
 
@@ -47,7 +47,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider
           modalSize="compact"
-          initialChain={flareMainnetConfig}
+          initialChain={flareTestnet}
         >
           {children}
         </RainbowKitProvider>
