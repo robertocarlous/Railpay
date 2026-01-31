@@ -551,14 +551,6 @@ Want to help? Here's how:
 - **Testing:** Always test on testnet first
 - **Approvals:** Be careful with token approvals (use limited amounts)
 
-### Reporting Issues
-
-Found a security issue? Email: security@yourproject.com
-
-Please don't open public GitHub issues for security problems.
-
----
-
 ## FAQ
 
 **Q: Do I need to run a blockchain node?**
@@ -584,17 +576,6 @@ A: It's shown after execution and saved in payout history.
 
 **Q: Can I export data for taxes?**
 A: Yes, use the Reports page to download CSV or JSON.
-
----
-
-## Support
-
-Need help?
-
-- **Documentation:** Check `/docs` folder for detailed guides
-- **Issues:** https://github.com/yourusername/railpay/issues
-- **Discord:** [Your Discord link]
-- **Email:** support@yourproject.com
 
 ---
 
