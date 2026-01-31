@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Layout from "../../components/Layout";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
@@ -8,9 +8,19 @@ import WalletGuard from "../../components/WalletGuard";
 import { useUserPayouts, calculateStats } from "../../../lib/usePayouts";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import { formatUSDT0 } from "../../../lib/contractInteractions";
+import {
+  downloadCSVReport,
+  downloadJSONReport,
+  downloadPDFReport,
+  downloadHTMLReport,
+} from "../../../lib/reportUtils";
+import { toast } from "react-toastify";
+import ReportPreview from "../../components/ReportPreview";
 
 export default function Reports() {
   const { payouts, isLoading } = useUserPayouts();
+  const [isExporting, setIsExporting] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const stats = useMemo(() => {
     if (isLoading || payouts.length === 0) {
@@ -97,6 +107,70 @@ export default function Reports() {
       .slice(0, 12); // Last 12 months
   }, [payouts]);
 
+  // Export handlers
+  const handleExportCSV = (detailed: boolean = false) => {
+    try {
+      setIsExporting(true);
+      downloadCSVReport(payouts, detailed);
+      toast.success(`CSV report downloaded successfully!`);
+    } catch (error: any) {
+      toast.error(`Failed to export CSV: ${error.message}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportJSON = () => {
+    try {
+      setIsExporting(true);
+      downloadJSONReport(payouts, true);
+      toast.success("JSON report downloaded successfully!");
+    } catch (error: any) {
+      toast.error(`Failed to export JSON: ${error.message}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportPDF = () => {
+    try {
+      setIsExporting(true);
+      downloadPDFReport(payouts);
+      toast.info("Print dialog opened. Save as PDF from the print menu.");
+    } catch (error: any) {
+      toast.error(`Failed to export PDF: ${error.message}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportHTML = () => {
+    try {
+      setIsExporting(true);
+      downloadHTMLReport(payouts);
+      toast.success("HTML report downloaded successfully!");
+    } catch (error: any) {
+      toast.error(`Failed to export HTML: ${error.message}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleGenerateFullReport = () => {
+    try {
+      setIsExporting(true);
+      // Generate all formats
+      downloadCSVReport(payouts, true); // Detailed CSV
+      downloadJSONReport(payouts, true);
+      downloadHTMLReport(payouts);
+      toast.success("Full report package downloaded successfully!");
+    } catch (error: any) {
+      toast.error(`Failed to generate full report: ${error.message}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <WalletGuard>
@@ -121,8 +195,13 @@ export default function Reports() {
                 Comprehensive payout analytics and insights
               </p>
             </div>
-            <Button variant="outline" size="lg" disabled={payouts.length === 0}>
-              Export Report
+            <Button 
+              variant="primary" 
+              size="lg" 
+              disabled={payouts.length === 0}
+              onClick={() => setShowPreview(true)}
+            >
+              👁️ Preview & Download
             </Button>
           </div>
 
@@ -271,25 +350,103 @@ export default function Reports() {
               Export Options
             </h2>
             <p className="text-sm text-gray-600 mb-6">
-              Download comprehensive reports in various formats for accounting and
+              Preview your reports before downloading in various formats for accounting and
               compliance purposes.
             </p>
-            <div className="flex flex-wrap gap-4">
-              <Button variant="outline" disabled={payouts.length === 0}>
-                Export CSV
-              </Button>
-              <Button variant="outline" disabled={payouts.length === 0}>
-                Export PDF
-              </Button>
-              <Button variant="outline" disabled={payouts.length === 0}>
-                Export JSON
-              </Button>
-              <Button variant="primary" disabled={payouts.length === 0}>
-                Generate Full Report
+            
+            {/* Primary Preview Button */}
+            <div className="mb-6">
+              <Button 
+                variant="primary" 
+                size="lg"
+                disabled={payouts.length === 0}
+                onClick={() => setShowPreview(true)}
+                className="w-full sm:w-auto"
+              >
+                <span className="flex items-center justify-center space-x-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  <span>Preview & Download Report</span>
+                </span>
               </Button>
             </div>
+
+            {/* Quick Download Options */}
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">Quick Downloads (No Preview)</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Button 
+                  variant="outline" 
+                  disabled={payouts.length === 0 || isExporting}
+                  onClick={() => handleExportCSV(false)}
+                  isLoading={isExporting}
+                >
+                  📊 Summary CSV
+                </Button>
+                <Button 
+                  variant="outline" 
+                  disabled={payouts.length === 0 || isExporting}
+                  onClick={() => handleExportCSV(true)}
+                  isLoading={isExporting}
+                >
+                  📋 Detailed CSV
+                </Button>
+                <Button 
+                  variant="outline" 
+                  disabled={payouts.length === 0 || isExporting}
+                  onClick={handleExportPDF}
+                  isLoading={isExporting}
+                >
+                  📄 Print PDF
+                </Button>
+                <Button 
+                  variant="outline" 
+                  disabled={payouts.length === 0 || isExporting}
+                  onClick={handleExportJSON}
+                  isLoading={isExporting}
+                >
+                  🔧 JSON
+                </Button>
+                <Button 
+                  variant="outline" 
+                  disabled={payouts.length === 0 || isExporting}
+                  onClick={handleExportHTML}
+                  isLoading={isExporting}
+                >
+                  🌐 HTML
+                </Button>
+                <Button 
+                  variant="outline" 
+                  disabled={payouts.length === 0 || isExporting}
+                  onClick={handleGenerateFullReport}
+                  isLoading={isExporting}
+                  className="sm:col-span-2 lg:col-span-3"
+                >
+                  📦 Full Package
+                </Button>
+              </div>
+            </div>
+            
+            {payouts.length > 0 && (
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h3 className="text-sm font-semibold text-blue-900 mb-2">💡 Pro Tip:</h3>
+                <p className="text-sm text-blue-800">
+                  Use the <strong>Preview & Download</strong> button to see your report before downloading. 
+                  You can switch between formats and verify data accuracy.
+                </p>
+              </div>
+            )}
           </Card>
         </div>
+
+        {/* Preview Modal */}
+        <ReportPreview
+          payouts={payouts}
+          isOpen={showPreview}
+          onClose={() => setShowPreview(false)}
+        />
       </Layout>
     </WalletGuard>
   );
