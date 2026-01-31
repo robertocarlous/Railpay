@@ -1,6 +1,7 @@
 /**
- * Custom hook to fetch payout data from the contract using event logs
- * WITH PAGINATION SUPPORT for RPC limits
+ * Custom hook to fetch payout data from the contract
+ * Fetches ALL payouts directly from contract using getPayoutCount()
+ * This ensures all historical data is available regardless of deployment/browser
  */
 
 import { useReadContract, usePublicClient } from "wagmi";
@@ -8,7 +9,6 @@ import { useAccount } from "wagmi";
 import { useState, useEffect } from "react";
 import { batchPayoutContract, batchPayoutABI } from "./contracts";
 import { getPayoutConfig, getPayoutRecipientsConfig, formatUSDT0 } from "./contractInteractions";
-import { formatUnits, decodeEventLog } from "viem";
 
 export interface PayoutData {
   payoutId: bigint;
@@ -22,16 +22,19 @@ export interface PayoutData {
     recipient: `0x${string}`;
     amount: bigint;
     payoutId: bigint;
+    paid: boolean;
+    timestamp: bigint;
   }>;
   txHash?: `0x${string}`;
   date?: string;
 }
 
 /**
- * Hook to get payout count from contract
+ * Hook to get total payout count from contract
+ * Returns the total number of payouts ever created
  */
 export function usePayoutCount() {
-  const { data: count, isLoading, error } = useReadContract({
+  const { data: count, isLoading, error, refetch } = useReadContract({
     address: batchPayoutContract.address,
     abi: batchPayoutABI,
     functionName: "getPayoutCount",
@@ -41,216 +44,162 @@ export function usePayoutCount() {
     count: count ? Number(count) : 0,
     isLoading,
     error,
+    refetch,
   };
 }
 
 /**
- * Fetch logs in chunks to work around RPC block limit
- */
-async function fetchLogsInChunks(
-  publicClient: any,
-  event: any,
-  fromBlock: bigint,
-  toBlock: bigint,
-  chunkSize: bigint = 25n
-) {
-  const allLogs: any[] = [];
-  let currentBlock = fromBlock;
-
-  console.log(`Fetching logs from block ${fromBlock} to ${toBlock} in chunks of ${chunkSize}`);
-
-  while (currentBlock <= toBlock) {
-    const endBlock = currentBlock + chunkSize - 1n > toBlock 
-      ? toBlock 
-      : currentBlock + chunkSize - 1n;
-
-    try {
-      console.log(`  Fetching chunk: ${currentBlock} to ${endBlock}`);
-      
-      const logs = await publicClient.getLogs({
-        address: batchPayoutContract.address,
-        event: event,
-        fromBlock: currentBlock,
-        toBlock: endBlock,
-      });
-
-      allLogs.push(...logs);
-      console.log(`  Found ${logs.length} events in this chunk`);
-    } catch (error) {
-      console.error(`  Error fetching chunk ${currentBlock}-${endBlock}:`, error);
-      // Continue to next chunk even if one fails
-    }
-
-    currentBlock = endBlock + 1n;
-  }
-
-  console.log(`Total events found: ${allLogs.length}`);
-  return allLogs;
-}
-
-/**
- * Hook to get all payouts by fetching event logs with pagination
+ * Hook to fetch ALL payouts from contract
+ * Uses getPayoutCount() to know how many payouts exist, then fetches each one
+ * This is reliable and works across all deployments/browsers
  */
 export function useAllPayouts() {
   const publicClient = usePublicClient();
-  const { address } = useAccount();
   const [payouts, setPayouts] = useState<PayoutData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { count } = usePayoutCount();
+  const [error, setError] = useState<Error | null>(null);
+  const { count, isLoading: countLoading } = usePayoutCount();
 
   useEffect(() => {
-    async function fetchPayouts() {
-      if (!publicClient) {
+    async function fetchAllPayouts() {
+      // Wait for public client and count
+      if (!publicClient || countLoading) {
+        return;
+      }
+
+      // If no payouts exist, set empty and exit
+      if (count === 0) {
+        setPayouts([]);
         setIsLoading(false);
         return;
       }
 
       try {
-        // Get current block number
-        const currentBlock = await publicClient.getBlockNumber();
+        setIsLoading(true);
+        setError(null);
         
-        // Fetch last ~1000 blocks with pagination (approximately 1.5 hours)
-        // Adjust TOTAL_BLOCKS_TO_FETCH based on how much history you need
-        const TOTAL_BLOCKS_TO_FETCH = 1000n;
-        const CHUNK_SIZE = 25n; // RPC limit is ~30, use 25 to be safe
-        
-        const fromBlock = currentBlock > TOTAL_BLOCKS_TO_FETCH 
-          ? currentBlock - TOTAL_BLOCKS_TO_FETCH 
-          : 0n;
+        console.log(`📊 Fetching ${count} payouts from contract...`);
 
-        // Get all PayoutCreated events using the ABI from the contract
-        const payoutCreatedEvent = batchPayoutABI.find(
-          (item: any) => item.type === "event" && item.name === "PayoutCreated"
-        );
+        // Payout IDs start from 1, not 0
+        // getPayoutCount() returns the next ID to be used, so actual payouts are 1 to count
+        const payoutIds = Array.from({ length: count }, (_, i) => BigInt(i + 1));
 
-        if (!payoutCreatedEvent) {
-          console.error("PayoutCreated event not found in ABI");
-          setIsLoading(false);
-          return;
-        }
-
-        // Fetch events in chunks to work around RPC limits
-        const events = await fetchLogsInChunks(
-          publicClient,
-          payoutCreatedEvent,
-          fromBlock,
-          currentBlock,
-          CHUNK_SIZE
-        );
-
-        // Fetch payout details for each event
-        const payoutPromises = events.map(async (event) => {
-          // Decode the event log to get the args
-          let decodedEvent;
+        // Fetch all payouts in parallel for better performance
+        const payoutPromises = payoutIds.map(async (payoutId) => {
           try {
-            decodedEvent = decodeEventLog({
-              abi: batchPayoutABI,
-              data: event.data,
-              topics: event.topics,
-            });
-          } catch (error) {
-            console.error("Failed to decode event:", error);
-            return null;
-          }
-
-          const payoutId = (decodedEvent.args as any)?.payoutId as bigint;
-          if (!payoutId) return null;
-
-          try {
+            // Fetch payout details
             const payoutData = await publicClient.readContract({
               address: batchPayoutContract.address,
               abi: batchPayoutABI,
               functionName: "getPayout",
               args: [payoutId],
-            });
+            }) as any;
 
+            // Fetch recipients for this payout
             const recipients = await publicClient.readContract({
               address: batchPayoutContract.address,
               abi: batchPayoutABI,
               functionName: "getPayoutRecipients",
               args: [payoutId],
-            });
+            }) as any;
 
-            const date = new Date(Number((payoutData as any).timestamp) * 1000);
+            // Format date
+            const date = new Date(Number(payoutData.timestamp) * 1000);
 
             return {
-              payoutId,
-              initiator: (payoutData as any).initiator,
-              totalAmount: (payoutData as any).totalAmount,
-              recipientCount: (payoutData as any).recipientCount,
-              timestamp: (payoutData as any).timestamp,
-              completed: (payoutData as any).completed,
-              proofRailsId: (payoutData as any).proofRailsId,
-              recipients: recipients as any,
-              txHash: event.transactionHash,
+              payoutId: payoutData.payoutId,
+              initiator: payoutData.initiator,
+              totalAmount: payoutData.totalAmount,
+              recipientCount: payoutData.recipientCount,
+              timestamp: payoutData.timestamp,
+              completed: payoutData.completed,
+              proofRailsId: payoutData.proofRailsId || "",
+              recipients: recipients.map((r: any) => ({
+                recipient: r.recipient,
+                amount: r.amount,
+                payoutId: r.payoutId,
+                paid: r.paid,
+                timestamp: r.timestamp,
+              })),
+              txHash: undefined, // Not stored in contract
               date: date.toISOString().split("T")[0],
             } as PayoutData;
-          } catch (error) {
-            console.error(`Error fetching payout ${payoutId}:`, error);
+          } catch (err) {
+            console.error(`❌ Error fetching payout ${payoutId}:`, err);
             return null;
           }
         });
 
-        const fetchedPayouts = (await Promise.all(payoutPromises)).filter(
-          (p): p is PayoutData => p !== null
-        );
+        // Wait for all fetches to complete
+        const results = await Promise.all(payoutPromises);
+        
+        // Filter out failed fetches and sort by ID (newest first)
+        const validPayouts = results
+          .filter((p): p is PayoutData => p !== null)
+          .sort((a, b) => Number(b.payoutId - a.payoutId));
 
-        // Sort by payout ID descending (newest first)
-        fetchedPayouts.sort((a, b) => Number(b.payoutId - a.payoutId));
-
-        setPayouts(fetchedPayouts);
-      } catch (error) {
-        console.error("Error fetching payouts:", error);
+        console.log(`✅ Successfully fetched ${validPayouts.length}/${count} payouts`);
+        setPayouts(validPayouts);
+      } catch (err) {
+        console.error("❌ Error fetching payouts:", err);
+        setError(err as Error);
+        setPayouts([]);
       } finally {
         setIsLoading(false);
       }
     }
 
-    fetchPayouts();
-  }, [publicClient, count]);
+    fetchAllPayouts();
+  }, [publicClient, count, countLoading]);
 
   return {
     payouts,
-    isLoading,
+    isLoading: isLoading || countLoading,
+    error,
     refetch: () => {
       setIsLoading(true);
-      // Trigger re-fetch by updating a dependency
+      // Re-run the effect
     },
   };
 }
 
 /**
  * Hook to get payouts filtered by initiator (current user)
+ * Shows only payouts created by the connected wallet
  */
 export function useUserPayouts() {
   const { address } = useAccount();
-  const { payouts, isLoading } = useAllPayouts();
+  const { payouts, isLoading, error } = useAllPayouts();
 
   const userPayouts = address
     ? payouts.filter((p) => p.initiator.toLowerCase() === address.toLowerCase())
     : [];
 
+  console.log(`👤 User ${address?.slice(0, 6)}... has ${userPayouts.length} payouts`);
+
   return {
     payouts: userPayouts,
     isLoading,
+    error,
   };
 }
 
 /**
  * Hook to get a single payout by ID
+ * Fetches payout details and recipients directly from contract
  */
 export function usePayout(payoutId: bigint | null) {
   const { data: payoutData, isLoading, error } = useReadContract({
     ...getPayoutConfig(payoutId || 0n),
     query: {
-      enabled: payoutId !== null,
+      enabled: payoutId !== null && payoutId > 0n,
     },
   });
 
   const { data: recipients } = useReadContract({
     ...getPayoutRecipientsConfig(payoutId || 0n),
     query: {
-      enabled: payoutId !== null,
+      enabled: payoutId !== null && payoutId > 0n,
     },
   });
 
@@ -276,7 +225,8 @@ export function usePayout(payoutId: bigint | null) {
 }
 
 /**
- * Calculate stats from payout data
+ * Calculate statistics from payout data
+ * Used for dashboard and reports
  */
 export function calculateStats(payouts: PayoutData[]) {
   const totalPayouts = payouts.length;

@@ -77,7 +77,7 @@ You need:
 
 1. **Clone this repo**
 ```bash
-git clone https://github.com/yourusername/railpay.git
+git clone https://github.com/robertocarlous/Railpay.git
 cd railpay
 ```
 
