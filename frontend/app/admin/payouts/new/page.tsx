@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, useChainId } from "wagmi";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import Layout from "../../../components/Layout";
@@ -18,8 +18,9 @@ import {
   formatUSDT0,
 } from "@/lib/contractInteractions";
 import {
-  recordBatchPayoutToProofRails,
-  getProofRailsAPIUrl,
+  recordPayoutReceipt,
+  getChainForProofRails,
+  getReceiptPageUrl,
 } from "@/lib/proofRailsClient";
 import { batchPayoutContract } from "@/lib/contracts";
 
@@ -31,12 +32,14 @@ interface Recipient {
 export default function NewPayout() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
+  const chainId = useChainId();
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [inputMethod, setInputMethod] = useState<"manual" | "csv">("manual");
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [payoutRef, setPayoutRef] = useState("");
   const [step, setStep] = useState<"input" | "approve" | "execute" | "proofrails">("input");
+  const [proofrailsReceiptId, setProofrailsReceiptId] = useState<string | null>(null);
 
   // Calculate total amount
   const totalAmount = recipients.reduce((sum, r) => {
@@ -101,10 +104,10 @@ export default function NewPayout() {
 
   // Handle payout success and ProofRails integration
   useEffect(() => {
-    if (payoutSuccess && receipt && recipients.length > 0) {
+    if (payoutSuccess && receipt && recipients.length > 0 && payoutHash) {
       handleProofRailsIntegration();
     }
-  }, [payoutSuccess, receipt]);
+  }, [payoutSuccess, receipt, payoutHash]);
 
   const handleAddRecipient = () => {
     setRecipients([...recipients, { address: "", amount: "" }]);
@@ -183,11 +186,7 @@ export default function NewPayout() {
     }
 
     // Approve with 20% buffer to account for any rounding issues
-    // Or approve max uint256 for convenience (uncomment below)
     const approveAmountDecimal = (totalAmount * 1.2).toFixed(6);
-    
-    // Alternative: Approve maximum amount (unlimited approval)
-    // const maxApproval = "115792089237316195423570985008687907853269984665640564039457.584007";
     
     console.log("Approving amount:", approveAmountDecimal, "USDT0");
     console.log("Total amount needed:", totalAmount, "USDT0");
@@ -254,32 +253,59 @@ export default function NewPayout() {
     if (!payoutHash || !address || recipients.length === 0) return;
 
     setStep("proofrails");
-    toast.info("Recording payments to ProofRails...");
+    toast.info("Recording payment receipt to ProofRails...");
 
     try {
-      const amounts = recipients.map((r) => r.amount);
-      const recipientAddresses = recipients.map((r) => r.address);
+      // Call the NEW ProofRails API
+      const proofrailsReceipt = await recordPayoutReceipt({
+        txHash: payoutHash,
+        chain: getChainForProofRails(chainId),
+        payoutId: Date.now(), // We'll get real payout ID from contract event in production
+        totalAmount: totalAmountWei.toString(),
+        recipientCount: recipients.length,
+        initiator: address,
+        currency: "USDT0",
+      });
 
-      const receipts = await recordBatchPayoutToProofRails(
-        payoutHash,
-        address,
-        recipientAddresses,
-        amounts,
-        "USDT0",
-        payoutRef || `payout-${Date.now()}`,
-        process.env.NEXT_PUBLIC_PROOFRAILS_API_KEY
-      );
-
-      toast.success(`Successfully recorded ${receipts.length} receipts to ProofRails!`);
+      if (proofrailsReceipt) {
+        setProofrailsReceiptId(proofrailsReceipt.receiptId);
+        toast.success("✅ Payment receipt created successfully!");
+        
+        console.log("ProofRails Receipt ID:", proofrailsReceipt.receiptId);
+        console.log("View receipt:", getReceiptPageUrl(proofrailsReceipt.receiptId));
+        
+        // Show success with receipt link
+        setTimeout(() => {
+          toast.info(
+            <div>
+              <p>Receipt created! Status: {proofrailsReceipt.status}</p>
+              <a 
+                href={getReceiptPageUrl(proofrailsReceipt.receiptId)} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 underline"
+              >
+                View Receipt →
+              </a>
+            </div>,
+            { autoClose: 10000 }
+          );
+        }, 1000);
+      } else {
+        // ProofRails not configured or failed
+        toast.warning("⚠️ Payout successful! Receipt creation skipped (ProofRails not configured)");
+      }
       
-      // Redirect to payout details or history
+      // Redirect to payout history
       setTimeout(() => {
         router.push("/admin/payouts");
       }, 2000);
+
     } catch (error: any) {
       console.error("ProofRails integration error:", error);
-      toast.error(`ProofRails integration failed: ${error.message}`);
-      // Still redirect even if ProofRails fails
+      toast.warning(`⚠️ Payout successful! Receipt creation failed: ${error.message}`);
+      
+      // Still redirect even if ProofRails fails - payment succeeded!
       setTimeout(() => {
         router.push("/admin/payouts");
       }, 3000);
@@ -287,7 +313,6 @@ export default function NewPayout() {
   };
 
   // Check if approval is needed
-  // Only check if we have recipients (totalAmountWei > 0)
   const needsApproval = totalAmountWei > BigInt(0) && (!allowance || allowance < totalAmountWei);
   const hasEnoughBalance = balance && (totalAmountWei === BigInt(0) || balance >= totalAmountWei);
 
@@ -620,6 +645,27 @@ export default function NewPayout() {
                 className="text-sm text-green-600 hover:underline mt-2 inline-block"
               >
                 View on Coston2 Explorer →
+              </a>
+            </Card>
+          )}
+
+          {/* ProofRails Receipt */}
+          {proofrailsReceiptId && (
+            <Card className="border-purple-200 bg-purple-50">
+              <h3 className="text-purple-800 font-semibold mb-2">ISO 20022 Receipt</h3>
+              <p className="text-sm text-purple-700 mb-2">
+                Receipt ID: <span className="font-mono">{proofrailsReceiptId}</span>
+              </p>
+              <p className="text-sm text-purple-700 mb-3">
+                Status: Pending (anchoring to Flare blockchain...)
+              </p>
+              <a
+                href={getReceiptPageUrl(proofrailsReceiptId)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+              >
+                View ISO 20022 Receipt →
               </a>
             </Card>
           )}
